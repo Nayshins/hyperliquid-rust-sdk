@@ -1,4 +1,8 @@
-use crate::exchange::{cancel::CancelRequest, modify::ModifyRequest, order::OrderRequest};
+use crate::exchange::{
+    cancel::CancelRequest,
+    modify::{ModifyRequest, ModifyRequestCloid},
+    order::OrderRequest,
+};
 pub(crate) use ethers::{
     abi::{encode, ParamType, Tokenizable},
     types::{
@@ -119,6 +123,12 @@ pub struct BulkModify {
 #[serde(rename_all = "camelCase")]
 pub struct BulkCancelCloid {
     pub cancels: Vec<CancelRequestCloid>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct BulkModifyCloid {
+    pub modifies: Vec<ModifyRequestCloid>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

@@ -322,3 +322,12 @@ pub struct SpotAssetCtx {
     pub shared: SharedAssetCtx,
     pub circulating_supply: String,
 }
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct BboData {
+    pub coin: String,
+    pub time: u64,
+    // [bestBidPx, bestBidSz, bestAskPx, bestAskSz, seq]
+    pub bbo: Vec<[String; 5]>,
+}
