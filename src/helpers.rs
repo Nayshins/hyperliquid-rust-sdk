@@ -1,9 +1,8 @@
 use crate::{consts::*, prelude::*, Error};
 use chrono::prelude::Utc;
-use lazy_static::lazy_static;
 use log::info;
 use rand::{thread_rng, Rng};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{atomic::{AtomicU64, Ordering}, LazyLock};
 use uuid::Uuid;
 
 fn now_timestamp_ms() -> u64 {
@@ -93,9 +92,7 @@ impl BaseUrl {
     }
 }
 
-lazy_static! {
-    static ref CUR_NONCE: AtomicU64 = AtomicU64::new(now_timestamp_ms());
-}
+static CUR_NONCE: LazyLock<AtomicU64> = LazyLock::new(|| AtomicU64::new(now_timestamp_ms()));
 
 #[cfg(test)]
 mod tests {
