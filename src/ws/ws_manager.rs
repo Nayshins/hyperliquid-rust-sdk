@@ -31,12 +31,14 @@ use tokio_tungstenite::{
 
 use ethers::types::H160;
 
+#[allow(dead_code)]
 #[derive(Debug)]
 struct SubscriptionData {
     sending_channel: UnboundedSender<Message>,
     subscription_id: u32,
     id: String,
 }
+#[allow(dead_code)]
 #[derive(Debug)]
 pub(crate) struct WsManager {
     stop_flag: Arc<AtomicBool>,
@@ -94,11 +96,13 @@ pub struct SubscriptionSendData<'a> {
     pub subscription: &'a serde_json::Value,
 }
 
+#[allow(dead_code)]
 #[derive(Serialize)]
 pub(crate) struct Ping {
     method: &'static str,
 }
 
+#[allow(dead_code)]
 impl WsManager {
     const SEND_PING_INTERVAL: u64 = 50;
 

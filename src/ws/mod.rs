@@ -26,5 +26,3 @@ pub use sub_structs::*;
 pub use ws_manager::{Message, Subscription, SubscriptionSendData};
 
 // Re-export for backwards compatibility
-#[cfg(not(feature = "fast-ws"))]
-pub(crate) use ws_manager::WsManager;

@@ -38,6 +38,7 @@ use super::{BuilderInfo, ClientLimit, ClientOrder};
 struct ExchangeClientInner {
     http_client: HttpClient<'static>,
     wallet: LocalWallet,
+    #[allow(dead_code)]
     meta: Meta,
     vault_address: Option<H160>,
     coin_to_asset: HashMap<String, u32>,

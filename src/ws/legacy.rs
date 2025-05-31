@@ -36,15 +36,20 @@ use ethers::types::H160;
 #[derive(Debug)]
 struct SubscriptionData {
     sending_channel: UnboundedSender<Message>,
+    #[allow(dead_code)]
     subscription_id: u32,
     id: String,
 }
 #[derive(Debug)]
 pub(crate) struct WsManager {
     stop_flag: Arc<AtomicBool>,
+    #[allow(dead_code)]
     writer: Arc<Mutex<SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, protocol::Message>>>,
+    #[allow(dead_code)]
     subscriptions: Arc<Mutex<HashMap<String, Vec<SubscriptionData>>>>,
+    #[allow(dead_code)]
     subscription_id: u32,
+    #[allow(dead_code)]
     subscription_identifiers: HashMap<u32, String>,
 }
 
@@ -73,16 +78,20 @@ pub(super) enum Subscription {
 pub(super) enum Message {
     NoData,
     HyperliquidError(String),
+    #[allow(dead_code)]
     AllMids(AllMids),
     Trades(Trades),
     L2Book(L2Book),
+    #[allow(dead_code)]
     User(User),
     UserFills(UserFills),
     Candle(Candle),
     SubscriptionResponse,
+    #[allow(dead_code)]
     OrderUpdates(OrderUpdates),
     UserFundings(UserFundings),
     UserNonFundingLedgerUpdates(UserNonFundingLedgerUpdates),
+    #[allow(dead_code)]
     Notification(Notification),
     WebData2(WebData2),
     ActiveAssetCtx(ActiveAssetCtx),
@@ -379,6 +388,7 @@ impl WsManager {
         Self::send_subscription_data("subscribe", writer, identifier).await
     }
 
+    #[allow(dead_code)]
     async fn unsubscribe(
         writer: &mut SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, protocol::Message>,
         identifier: &str,
@@ -386,6 +396,7 @@ impl WsManager {
         Self::send_subscription_data("unsubscribe", writer, identifier).await
     }
 
+    #[allow(dead_code)]
     pub(crate) async fn add_subscription(
         &mut self,
         identifier: String,
@@ -431,6 +442,7 @@ impl WsManager {
         Ok(subscription_id)
     }
 
+    #[allow(dead_code)]
     pub(crate) async fn remove_subscription(&mut self, subscription_id: u32) -> Result<()> {
         let identifier = self
             .subscription_identifiers
@@ -489,11 +501,11 @@ impl WsBackend for WsManager {
         let (tx, rx) = broadcast::channel(1024);
 
         // Convert subscription to identifier and add to manager
-        let identifier =
+        let _identifier =
             serde_json::to_string(&sub).map_err(|e| Error::JsonParse(e.to_string()))?;
 
         // Create an mpsc sender that forwards to broadcast
-        let (mpsc_tx, mut mpsc_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (_mpsc_tx, mut mpsc_rx) = tokio::sync::mpsc::unbounded_channel();
 
         // Spawn task to forward from mpsc to broadcast
         let tx_clone = tx.clone();
