@@ -38,6 +38,14 @@ impl WsBackend for FastWs {
         let ident = match &s {
             Subscription::UserEvents { .. } => Identifier::UserEvents,
             Subscription::OrderUpdates { .. } => Identifier::OrderUpdates,
+            Subscription::AllMids => Identifier::Str(Box::from("allMids")),
+            Subscription::L2Book { coin } => Identifier::Str(Box::from(format!("l2Book:{}", coin))),
+            Subscription::Trades { coin } => Identifier::Str(Box::from(format!("trades:{}", coin))),
+            Subscription::Candle { coin, .. } => {
+                Identifier::Str(Box::from(format!("candle:{}", coin)))
+            }
+            Subscription::Notification { .. } => Identifier::Str(Box::from("notification")),
+            Subscription::Bbo { coin } => Identifier::Str(Box::from(format!("bbo:{}", coin))),
             _ => Identifier::Str(Box::from(
                 serde_json::to_string(&s).map_err(|e| crate::Error::JsonParse(e.to_string()))?,
             )),

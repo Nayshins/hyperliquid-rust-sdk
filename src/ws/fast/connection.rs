@@ -58,7 +58,7 @@ impl FastWs {
                             // Try zero-copy parsing for high-throughput channels first
                             let msg = super::zero_copy::parse_zero_copy(&bytes)
                                 .or_else(|| serde_json::from_slice::<Message>(&bytes).ok());
-                            
+
                             if let Some(msg) = msg {
                                 let ident = ident_from_channel(&chan);
                                 if let Some(tx) = read_bus.get(&ident) {
@@ -77,7 +77,7 @@ impl FastWs {
                             // Try zero-copy parsing for high-throughput channels first
                             let msg = super::zero_copy::parse_zero_copy(&bytes)
                                 .or_else(|| serde_json::from_slice::<Message>(&bytes).ok());
-                            
+
                             if let Some(msg) = msg {
                                 let ident = ident_from_channel(&chan);
                                 if let Some(tx) = read_bus.get(&ident) {

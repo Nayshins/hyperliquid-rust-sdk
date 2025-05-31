@@ -88,7 +88,6 @@ impl WsBackend for MockWsBackend {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

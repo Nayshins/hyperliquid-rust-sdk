@@ -101,16 +101,11 @@ impl InfoClient {
         Self::new_internal(base_url, false).await
     }
 
-    pub async fn with_reconnect(
-        base_url: Option<BaseUrl>,
-    ) -> Result<InfoClient> {
+    pub async fn with_reconnect(base_url: Option<BaseUrl>) -> Result<InfoClient> {
         Self::new_internal(base_url, true).await
     }
 
-    async fn new_internal(
-        base_url: Option<BaseUrl>,
-        reconnect: bool,
-    ) -> Result<InfoClient> {
+    async fn new_internal(base_url: Option<BaseUrl>, reconnect: bool) -> Result<InfoClient> {
         let base_url = base_url.unwrap_or(BaseUrl::Mainnet).get_url();
 
         Ok(InfoClient {
@@ -142,10 +137,7 @@ impl InfoClient {
         let base_url = base_url.unwrap_or(BaseUrl::Mainnet).get_url();
 
         Ok(InfoClient {
-            http_client: HttpClient {
-                client,
-                base_url,
-            },
+            http_client: HttpClient { client, base_url },
             ws: None,
             reconnect,
         })
@@ -159,7 +151,7 @@ impl InfoClient {
         if self.ws.is_none() {
             self.ws = Some(
                 crate::ws::make_ws_backend(
-                    &format!("ws{}/ws", &self.http_client.base_url[4..]),
+                    &format!("wss{}/ws", &self.http_client.base_url[5..]),
                     self.reconnect,
                 )
                 .await?,

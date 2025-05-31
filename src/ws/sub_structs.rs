@@ -328,6 +328,12 @@ pub struct SpotAssetCtx {
 pub struct BboData {
     pub coin: String,
     pub time: u64,
-    // [bestBidPx, bestBidSz, bestAskPx, bestAskSz, seq]
-    pub bbo: Vec<[String; 5]>,
+    pub bbo: Vec<BboLevel>,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct BboLevel {
+    pub px: String,
+    pub sz: String,
+    pub n: u64,
 }

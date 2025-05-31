@@ -28,19 +28,24 @@ use ethers::{
 use log::debug;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use super::cancel::ClientCancelRequestCloid;
 use super::order::{MarketCloseParams, MarketOrderParams};
 use super::{BuilderInfo, ClientLimit, ClientOrder};
 
 #[derive(Debug)]
+struct ExchangeClientInner {
+    http_client: HttpClient<'static>,
+    wallet: LocalWallet,
+    meta: Meta,
+    vault_address: Option<H160>,
+    coin_to_asset: HashMap<String, u32>,
+}
+
+#[derive(Debug, Clone)]
 pub struct ExchangeClient {
-    pub http_client: HttpClient<'static>,
-    pub wallet: LocalWallet,
-    pub meta: Meta,
-    pub vault_address: Option<H160>,
-    pub coin_to_asset: HashMap<String, u32>,
+    inner: Arc<ExchangeClientInner>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -115,11 +120,13 @@ impl ExchangeClient {
             .add_pair_and_name_to_index_map(coin_to_asset);
 
         Ok(ExchangeClient {
-            wallet,
-            meta,
-            vault_address,
-            http_client: HttpClient::new(base_url.get_url()),
-            coin_to_asset,
+            inner: Arc::new(ExchangeClientInner {
+                wallet,
+                meta,
+                vault_address,
+                http_client: HttpClient::new(base_url.get_url()),
+                coin_to_asset,
+            }),
         })
     }
 
@@ -150,14 +157,16 @@ impl ExchangeClient {
             .add_pair_and_name_to_index_map(coin_to_asset);
 
         Ok(ExchangeClient {
-            wallet,
-            meta,
-            vault_address,
-            http_client: HttpClient {
-                client,
-                base_url: base_url.get_url(),
-            },
-            coin_to_asset,
+            inner: Arc::new(ExchangeClientInner {
+                wallet,
+                meta,
+                vault_address,
+                http_client: HttpClient {
+                    client,
+                    base_url: base_url.get_url(),
+                },
+                coin_to_asset,
+            }),
         })
     }
 
@@ -171,13 +180,14 @@ impl ExchangeClient {
             action,
             signature,
             nonce,
-            vault_address: self.vault_address,
+            vault_address: self.inner.vault_address,
         };
         let res = serde_json::to_string(&exchange_payload)
             .map_err(|e| Error::JsonParse(e.to_string()))?;
         debug!("Sending request {res:?}");
 
         let output = &self
+            .inner
             .http_client
             .post("/exchange", res)
             .await
@@ -191,8 +201,8 @@ impl ExchangeClient {
         destination: &str,
         wallet: Option<&LocalWallet>,
     ) -> Result<ExchangeResponseStatus> {
-        let wallet = wallet.unwrap_or(&self.wallet);
-        let hyperliquid_chain = if self.http_client.is_mainnet() {
+        let wallet = wallet.unwrap_or(&self.inner.wallet);
+        let hyperliquid_chain = if self.inner.http_client.is_mainnet() {
             "Mainnet".to_string()
         } else {
             "Testnet".to_string()
@@ -221,16 +231,16 @@ impl ExchangeClient {
     ) -> Result<ExchangeResponseStatus> {
         // payload expects usdc without decimals
         let usdc = (usdc * 1e6).round() as u64;
-        let wallet = wallet.unwrap_or(&self.wallet);
+        let wallet = wallet.unwrap_or(&self.inner.wallet);
 
         let timestamp = next_nonce();
 
         let action = Actions::SpotUser(SpotUser {
             class_transfer: ClassTransfer { usdc, to_perp },
         });
-        let connection_id = action.hash(timestamp, self.vault_address)?;
+        let connection_id = action.hash(timestamp, self.inner.vault_address)?;
         let action = serde_json::to_value(&action).map_err(|e| Error::JsonParse(e.to_string()))?;
-        let is_mainnet = self.http_client.is_mainnet();
+        let is_mainnet = self.inner.http_client.is_mainnet();
         let signature = sign_l1_action(wallet, connection_id, is_mainnet)?;
 
         self.post(action, signature, timestamp).await
@@ -244,10 +254,11 @@ impl ExchangeClient {
         wallet: Option<&LocalWallet>,
     ) -> Result<ExchangeResponseStatus> {
         let vault_address = self
+            .inner
             .vault_address
             .or(vault_address)
             .ok_or(Error::VaultAddressNotFound)?;
-        let wallet = wallet.unwrap_or(&self.wallet);
+        let wallet = wallet.unwrap_or(&self.inner.wallet);
 
         let timestamp = next_nonce();
 
@@ -256,9 +267,9 @@ impl ExchangeClient {
             is_deposit,
             usd,
         });
-        let connection_id = action.hash(timestamp, self.vault_address)?;
+        let connection_id = action.hash(timestamp, self.inner.vault_address)?;
         let action = serde_json::to_value(&action).map_err(|e| Error::JsonParse(e.to_string()))?;
-        let is_mainnet = self.http_client.is_mainnet();
+        let is_mainnet = self.inner.http_client.is_mainnet();
         let signature = sign_l1_action(wallet, connection_id, is_mainnet)?;
 
         self.post(action, signature, timestamp).await
@@ -318,9 +329,9 @@ impl ExchangeClient {
         params: MarketCloseParams<'_>,
     ) -> Result<ExchangeResponseStatus> {
         let slippage = params.slippage.unwrap_or(0.05); // Default 5% slippage
-        let wallet = params.wallet.unwrap_or(&self.wallet);
+        let wallet = params.wallet.unwrap_or(&self.inner.wallet);
 
-        let base_url = match self.http_client.base_url.as_str() {
+        let base_url = match self.inner.http_client.base_url.as_str() {
             "https://api.hyperliquid.xyz" => BaseUrl::Mainnet,
             "https://api.hyperliquid-testnet.xyz" => BaseUrl::Testnet,
             _ => return Err(Error::GenericRequest("Invalid base URL".to_string())),
@@ -368,7 +379,7 @@ impl ExchangeClient {
         slippage: f64,
         px: Option<f64>,
     ) -> Result<(f64, u32)> {
-        let base_url = match self.http_client.base_url.as_str() {
+        let base_url = match self.inner.http_client.base_url.as_str() {
             "https://api.hyperliquid.xyz" => BaseUrl::Mainnet,
             "https://api.hyperliquid-testnet.xyz" => BaseUrl::Testnet,
             _ => return Err(Error::GenericRequest("Invalid base URL".to_string())),
@@ -383,7 +394,7 @@ impl ExchangeClient {
             .ok_or(Error::AssetNotFound)?;
 
         let sz_decimals = asset_meta.sz_decimals;
-        let max_decimals: u32 = if self.coin_to_asset[asset] < 10000 {
+        let max_decimals: u32 = if self.inner.coin_to_asset[asset] < 10000 {
             6
         } else {
             8
@@ -439,13 +450,13 @@ impl ExchangeClient {
         orders: Vec<ClientOrderRequest>,
         wallet: Option<&LocalWallet>,
     ) -> Result<ExchangeResponseStatus> {
-        let wallet = wallet.unwrap_or(&self.wallet);
+        let wallet = wallet.unwrap_or(&self.inner.wallet);
         let timestamp = next_nonce();
 
         let mut transformed_orders = Vec::new();
 
         for order in orders {
-            transformed_orders.push(order.convert(&self.coin_to_asset)?);
+            transformed_orders.push(order.convert(&self.inner.coin_to_asset)?);
         }
 
         let action = Actions::Order(BulkOrder {
@@ -453,10 +464,10 @@ impl ExchangeClient {
             grouping: "na".to_string(),
             builder: None,
         });
-        let connection_id = action.hash(timestamp, self.vault_address)?;
+        let connection_id = action.hash(timestamp, self.inner.vault_address)?;
         let action = serde_json::to_value(&action).map_err(|e| Error::JsonParse(e.to_string()))?;
 
-        let is_mainnet = self.http_client.is_mainnet();
+        let is_mainnet = self.inner.http_client.is_mainnet();
         let signature = sign_l1_action(wallet, connection_id, is_mainnet)?;
         self.post(action, signature, timestamp).await
     }
@@ -467,7 +478,7 @@ impl ExchangeClient {
         wallet: Option<&LocalWallet>,
         mut builder: BuilderInfo,
     ) -> Result<ExchangeResponseStatus> {
-        let wallet = wallet.unwrap_or(&self.wallet);
+        let wallet = wallet.unwrap_or(&self.inner.wallet);
         let timestamp = next_nonce();
 
         builder.builder = builder.builder.to_lowercase();
@@ -475,7 +486,7 @@ impl ExchangeClient {
         let mut transformed_orders = Vec::new();
 
         for order in orders {
-            transformed_orders.push(order.convert(&self.coin_to_asset)?);
+            transformed_orders.push(order.convert(&self.inner.coin_to_asset)?);
         }
 
         let action = Actions::Order(BulkOrder {
@@ -483,10 +494,10 @@ impl ExchangeClient {
             grouping: "na".to_string(),
             builder: Some(builder),
         });
-        let connection_id = action.hash(timestamp, self.vault_address)?;
+        let connection_id = action.hash(timestamp, self.inner.vault_address)?;
         let action = serde_json::to_value(&action).map_err(|e| Error::JsonParse(e.to_string()))?;
 
-        let is_mainnet = self.http_client.is_mainnet();
+        let is_mainnet = self.inner.http_client.is_mainnet();
         let signature = sign_l1_action(wallet, connection_id, is_mainnet)?;
         self.post(action, signature, timestamp).await
     }
@@ -504,12 +515,13 @@ impl ExchangeClient {
         cancels: Vec<ClientCancelRequest>,
         wallet: Option<&LocalWallet>,
     ) -> Result<ExchangeResponseStatus> {
-        let wallet = wallet.unwrap_or(&self.wallet);
+        let wallet = wallet.unwrap_or(&self.inner.wallet);
         let timestamp = next_nonce();
 
         let mut transformed_cancels = Vec::new();
         for cancel in cancels.into_iter() {
             let &asset = self
+                .inner
                 .coin_to_asset
                 .get(&cancel.asset)
                 .ok_or(Error::AssetNotFound)?;
@@ -522,10 +534,10 @@ impl ExchangeClient {
         let action = Actions::Cancel(BulkCancel {
             cancels: transformed_cancels,
         });
-        let connection_id = action.hash(timestamp, self.vault_address)?;
+        let connection_id = action.hash(timestamp, self.inner.vault_address)?;
 
         let action = serde_json::to_value(&action).map_err(|e| Error::JsonParse(e.to_string()))?;
-        let is_mainnet = self.http_client.is_mainnet();
+        let is_mainnet = self.inner.http_client.is_mainnet();
         let signature = sign_l1_action(wallet, connection_id, is_mainnet)?;
 
         self.post(action, signature, timestamp).await
@@ -544,24 +556,24 @@ impl ExchangeClient {
         modifies: Vec<ClientModifyRequest>,
         wallet: Option<&LocalWallet>,
     ) -> Result<ExchangeResponseStatus> {
-        let wallet = wallet.unwrap_or(&self.wallet);
+        let wallet = wallet.unwrap_or(&self.inner.wallet);
         let timestamp = next_nonce();
 
         let mut transformed_modifies = Vec::new();
         for modify in modifies.into_iter() {
             transformed_modifies.push(ModifyRequest {
                 oid: modify.oid,
-                order: modify.order.convert(&self.coin_to_asset)?,
+                order: modify.order.convert(&self.inner.coin_to_asset)?,
             });
         }
 
         let action = Actions::BatchModify(BulkModify {
             modifies: transformed_modifies,
         });
-        let connection_id = action.hash(timestamp, self.vault_address)?;
+        let connection_id = action.hash(timestamp, self.inner.vault_address)?;
 
         let action = serde_json::to_value(&action).map_err(|e| Error::JsonParse(e.to_string()))?;
-        let is_mainnet = self.http_client.is_mainnet();
+        let is_mainnet = self.inner.http_client.is_mainnet();
         let signature = sign_l1_action(wallet, connection_id, is_mainnet)?;
 
         self.post(action, signature, timestamp).await
@@ -580,24 +592,24 @@ impl ExchangeClient {
         modifies: Vec<ClientModifyRequestCloid>,
         wallet: Option<&LocalWallet>,
     ) -> Result<ExchangeResponseStatus> {
-        let wallet = wallet.unwrap_or(&self.wallet);
+        let wallet = wallet.unwrap_or(&self.inner.wallet);
         let timestamp = next_nonce();
 
         let mut transformed_modifies = Vec::new();
         for modify in modifies.into_iter() {
             transformed_modifies.push(ModifyRequestCloid {
                 cloid: uuid_to_hex_string(modify.cloid),
-                order: modify.order.convert(&self.coin_to_asset)?,
+                order: modify.order.convert(&self.inner.coin_to_asset)?,
             });
         }
 
         let action = Actions::BatchModifyByCloid(BulkModifyCloid {
             modifies: transformed_modifies,
         });
-        let connection_id = action.hash(timestamp, self.vault_address)?;
+        let connection_id = action.hash(timestamp, self.inner.vault_address)?;
 
         let action = serde_json::to_value(&action).map_err(|e| Error::JsonParse(e.to_string()))?;
-        let is_mainnet = self.http_client.is_mainnet();
+        let is_mainnet = self.inner.http_client.is_mainnet();
         let signature = sign_l1_action(wallet, connection_id, is_mainnet)?;
 
         self.post(action, signature, timestamp).await
@@ -616,12 +628,13 @@ impl ExchangeClient {
         cancels: Vec<ClientCancelRequestCloid>,
         wallet: Option<&LocalWallet>,
     ) -> Result<ExchangeResponseStatus> {
-        let wallet = wallet.unwrap_or(&self.wallet);
+        let wallet = wallet.unwrap_or(&self.inner.wallet);
         let timestamp = next_nonce();
 
         let mut transformed_cancels: Vec<CancelRequestCloid> = Vec::new();
         for cancel in cancels.into_iter() {
             let &asset = self
+                .inner
                 .coin_to_asset
                 .get(&cancel.asset)
                 .ok_or(Error::AssetNotFound)?;
@@ -635,9 +648,9 @@ impl ExchangeClient {
             cancels: transformed_cancels,
         });
 
-        let connection_id = action.hash(timestamp, self.vault_address)?;
+        let connection_id = action.hash(timestamp, self.inner.vault_address)?;
         let action = serde_json::to_value(&action).map_err(|e| Error::JsonParse(e.to_string()))?;
-        let is_mainnet = self.http_client.is_mainnet();
+        let is_mainnet = self.inner.http_client.is_mainnet();
         let signature = sign_l1_action(wallet, connection_id, is_mainnet)?;
 
         self.post(action, signature, timestamp).await
@@ -650,19 +663,23 @@ impl ExchangeClient {
         is_cross: bool,
         wallet: Option<&LocalWallet>,
     ) -> Result<ExchangeResponseStatus> {
-        let wallet = wallet.unwrap_or(&self.wallet);
+        let wallet = wallet.unwrap_or(&self.inner.wallet);
 
         let timestamp = next_nonce();
 
-        let &asset_index = self.coin_to_asset.get(coin).ok_or(Error::AssetNotFound)?;
+        let &asset_index = self
+            .inner
+            .coin_to_asset
+            .get(coin)
+            .ok_or(Error::AssetNotFound)?;
         let action = Actions::UpdateLeverage(UpdateLeverage {
             asset: asset_index,
             is_cross,
             leverage,
         });
-        let connection_id = action.hash(timestamp, self.vault_address)?;
+        let connection_id = action.hash(timestamp, self.inner.vault_address)?;
         let action = serde_json::to_value(&action).map_err(|e| Error::JsonParse(e.to_string()))?;
-        let is_mainnet = self.http_client.is_mainnet();
+        let is_mainnet = self.inner.http_client.is_mainnet();
         let signature = sign_l1_action(wallet, connection_id, is_mainnet)?;
 
         self.post(action, signature, timestamp).await
@@ -674,20 +691,24 @@ impl ExchangeClient {
         coin: &str,
         wallet: Option<&LocalWallet>,
     ) -> Result<ExchangeResponseStatus> {
-        let wallet = wallet.unwrap_or(&self.wallet);
+        let wallet = wallet.unwrap_or(&self.inner.wallet);
 
         let amount = (amount * 1_000_000.0).round() as i64;
         let timestamp = next_nonce();
 
-        let &asset_index = self.coin_to_asset.get(coin).ok_or(Error::AssetNotFound)?;
+        let &asset_index = self
+            .inner
+            .coin_to_asset
+            .get(coin)
+            .ok_or(Error::AssetNotFound)?;
         let action = Actions::UpdateIsolatedMargin(UpdateIsolatedMargin {
             asset: asset_index,
             is_buy: true,
             ntli: amount,
         });
-        let connection_id = action.hash(timestamp, self.vault_address)?;
+        let connection_id = action.hash(timestamp, self.inner.vault_address)?;
         let action = serde_json::to_value(&action).map_err(|e| Error::JsonParse(e.to_string()))?;
-        let is_mainnet = self.http_client.is_mainnet();
+        let is_mainnet = self.inner.http_client.is_mainnet();
         let signature = sign_l1_action(wallet, connection_id, is_mainnet)?;
 
         self.post(action, signature, timestamp).await
@@ -697,7 +718,7 @@ impl ExchangeClient {
         &self,
         wallet: Option<&LocalWallet>,
     ) -> Result<(String, ExchangeResponseStatus)> {
-        let wallet = wallet.unwrap_or(&self.wallet);
+        let wallet = wallet.unwrap_or(&self.inner.wallet);
         let key = H256::from(generate_random_key()?).encode_hex()[2..].to_string();
 
         let address = key
@@ -705,7 +726,7 @@ impl ExchangeClient {
             .map_err(|e| Error::PrivateKeyParse(e.to_string()))?
             .address();
 
-        let hyperliquid_chain = if self.http_client.is_mainnet() {
+        let hyperliquid_chain = if self.inner.http_client.is_mainnet() {
             "Mainnet".to_string()
         } else {
             "Testnet".to_string()
@@ -731,8 +752,8 @@ impl ExchangeClient {
         destination: &str,
         wallet: Option<&LocalWallet>,
     ) -> Result<ExchangeResponseStatus> {
-        let wallet = wallet.unwrap_or(&self.wallet);
-        let hyperliquid_chain = if self.http_client.is_mainnet() {
+        let wallet = wallet.unwrap_or(&self.inner.wallet);
+        let hyperliquid_chain = if self.inner.http_client.is_mainnet() {
             "Mainnet".to_string()
         } else {
             "Testnet".to_string()
@@ -760,8 +781,8 @@ impl ExchangeClient {
         token: &str,
         wallet: Option<&LocalWallet>,
     ) -> Result<ExchangeResponseStatus> {
-        let wallet = wallet.unwrap_or(&self.wallet);
-        let hyperliquid_chain = if self.http_client.is_mainnet() {
+        let wallet = wallet.unwrap_or(&self.inner.wallet);
+        let hyperliquid_chain = if self.inner.http_client.is_mainnet() {
             "Mainnet".to_string()
         } else {
             "Testnet".to_string()
@@ -788,15 +809,15 @@ impl ExchangeClient {
         code: String,
         wallet: Option<&LocalWallet>,
     ) -> Result<ExchangeResponseStatus> {
-        let wallet = wallet.unwrap_or(&self.wallet);
+        let wallet = wallet.unwrap_or(&self.inner.wallet);
         let timestamp = next_nonce();
 
         let action = Actions::SetReferrer(SetReferrer { code });
 
-        let connection_id = action.hash(timestamp, self.vault_address)?;
+        let connection_id = action.hash(timestamp, self.inner.vault_address)?;
         let action = serde_json::to_value(&action).map_err(|e| Error::JsonParse(e.to_string()))?;
 
-        let is_mainnet = self.http_client.is_mainnet();
+        let is_mainnet = self.inner.http_client.is_mainnet();
         let signature = sign_l1_action(wallet, connection_id, is_mainnet)?;
         self.post(action, signature, timestamp).await
     }
@@ -807,10 +828,10 @@ impl ExchangeClient {
         max_fee_rate: String,
         wallet: Option<&LocalWallet>,
     ) -> Result<ExchangeResponseStatus> {
-        let wallet = wallet.unwrap_or(&self.wallet);
+        let wallet = wallet.unwrap_or(&self.inner.wallet);
         let timestamp = next_nonce();
 
-        let hyperliquid_chain = if self.http_client.is_mainnet() {
+        let hyperliquid_chain = if self.inner.http_client.is_mainnet() {
             "Mainnet".to_string()
         } else {
             "Testnet".to_string()
@@ -824,10 +845,10 @@ impl ExchangeClient {
             nonce: timestamp,
         });
 
-        let connection_id = action.hash(timestamp, self.vault_address)?;
+        let connection_id = action.hash(timestamp, self.inner.vault_address)?;
         let action = serde_json::to_value(&action).map_err(|e| Error::JsonParse(e.to_string()))?;
 
-        let is_mainnet = self.http_client.is_mainnet();
+        let is_mainnet = self.inner.http_client.is_mainnet();
         let signature = sign_l1_action(wallet, connection_id, is_mainnet)?;
         self.post(action, signature, timestamp).await
     }

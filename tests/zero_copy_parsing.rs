@@ -7,7 +7,7 @@ mod tests {
     fn test_zero_copy_all_mids_parsing() {
         let json_data = r#"{"channel":"allMids","data":{"mids":{"BTC":"50000.0","ETH":"3000.0","SOL":"100.0"}}}"#;
         let bytes = json_data.as_bytes();
-        
+
         // This should use the zero-copy parser for allMids
         if let Some(msg) = hyperliquid_rust_sdk::ws::fast::zero_copy::parse_zero_copy(bytes) {
             match msg {
@@ -15,7 +15,7 @@ mod tests {
                     assert_eq!(all_mids.data.mids.get("BTC"), Some(&"50000.0".to_string()));
                     assert_eq!(all_mids.data.mids.get("ETH"), Some(&"3000.0".to_string()));
                     assert_eq!(all_mids.data.mids.get("SOL"), Some(&"100.0".to_string()));
-                },
+                }
                 _ => panic!("Expected AllMids message"),
             }
         } else {
@@ -27,7 +27,7 @@ mod tests {
     fn test_zero_copy_l2_book_parsing() {
         let json_data = r#"{"channel":"l2Book","data":{"coin":"BTC","time":1234567890,"levels":[[{"px":"50000.0","sz":"1.0","n":1}],[{"px":"49999.0","sz":"2.0","n":2}]]}}"#;
         let bytes = json_data.as_bytes();
-        
+
         // This should use the zero-copy parser for l2Book
         if let Some(msg) = hyperliquid_rust_sdk::ws::fast::zero_copy::parse_zero_copy(bytes) {
             match msg {
@@ -38,7 +38,7 @@ mod tests {
                     assert_eq!(l2_book.data.levels[0][0].px, "50000.0");
                     assert_eq!(l2_book.data.levels[0][0].sz, "1.0");
                     assert_eq!(l2_book.data.levels[0][0].n, 1);
-                },
+                }
                 _ => panic!("Expected L2Book message"),
             }
         } else {
@@ -50,7 +50,7 @@ mod tests {
     fn test_non_high_throughput_channel_returns_none() {
         let json_data = r#"{"channel":"trades","data":{"coin":"BTC","time":1234567890}}"#;
         let bytes = json_data.as_bytes();
-        
+
         // Should return None for non-high-throughput channels, allowing fallback to serde
         let result = hyperliquid_rust_sdk::ws::fast::zero_copy::parse_zero_copy(bytes);
         assert!(result.is_none());
@@ -64,7 +64,7 @@ mod tests {
     fn test_zero_copy_disabled_without_fast_ws() {
         let json_data = r#"{"channel":"allMids","data":{"mids":{"BTC":"50000.0"}}}"#;
         let bytes = json_data.as_bytes();
-        
+
         // Should return None when fast-ws feature is not enabled
         let result = hyperliquid_rust_sdk::ws::fast::zero_copy::parse_zero_copy(bytes);
         assert!(result.is_none());

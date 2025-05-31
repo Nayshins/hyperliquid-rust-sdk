@@ -50,7 +50,7 @@ async fn parse_response(response: Response) -> Result<String> {
     })
 }
 
-impl<'c> HttpClient<'c> {
+impl HttpClient<'_> {
     pub async fn post(&self, url_path: &'static str, data: String) -> Result<String> {
         let full_url = format!("{}{url_path}", self.base_url);
         let request = self

@@ -2,7 +2,10 @@ use crate::{consts::*, prelude::*, Error};
 use chrono::prelude::Utc;
 use log::info;
 use rand::{thread_rng, Rng};
-use std::sync::{atomic::{AtomicU64, Ordering}, LazyLock};
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    LazyLock,
+};
 use uuid::Uuid;
 
 fn now_timestamp_ms() -> u64 {
