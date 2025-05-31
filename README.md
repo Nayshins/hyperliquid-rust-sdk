@@ -13,6 +13,7 @@ The SDK now uses a shared HTTP connection pool for all REST API calls, significa
 - **Single TCP/TLS handshake** per process, reused for all requests
 - **Connection keep-alive** allows multiple requests over the same connection
 - **32 idle connections per host** with 90-second keep-alive
+- **TCP optimizations** with keep-alive (30s) and nodelay for low latency
 - **Automatic connection reuse** across all SDK instances
 
 ### Default Usage
