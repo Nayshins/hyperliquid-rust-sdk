@@ -55,7 +55,11 @@ impl FastWs {
                         }
 
                         if let Some(chan) = super::router::route(&bytes) {
-                            if let Ok(msg) = serde_json::from_slice::<Message>(&bytes) {
+                            // Try zero-copy parsing for high-throughput channels first
+                            let msg = super::zero_copy::parse_zero_copy(&bytes)
+                                .or_else(|| serde_json::from_slice::<Message>(&bytes).ok());
+                            
+                            if let Some(msg) = msg {
                                 let ident = ident_from_channel(&chan);
                                 if let Some(tx) = read_bus.get(&ident) {
                                     let _ = tx.send(Arc::new(msg));
@@ -70,7 +74,11 @@ impl FastWs {
                         }
 
                         if let Some(chan) = super::router::route(&bytes) {
-                            if let Ok(msg) = serde_json::from_slice::<Message>(&bytes) {
+                            // Try zero-copy parsing for high-throughput channels first
+                            let msg = super::zero_copy::parse_zero_copy(&bytes)
+                                .or_else(|| serde_json::from_slice::<Message>(&bytes).ok());
+                            
+                            if let Some(msg) = msg {
                                 let ident = ident_from_channel(&chan);
                                 if let Some(tx) = read_bus.get(&ident) {
                                     let _ = tx.send(Arc::new(msg));

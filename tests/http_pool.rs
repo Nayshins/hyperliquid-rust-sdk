@@ -2,6 +2,7 @@ use hyperliquid_rust_sdk::{BaseUrl, InfoClient};
 use std::time::Instant;
 
 #[tokio::test]
+#[ignore] // Requires network access to live Hyperliquid testnet API
 async fn pool_reuse() {
     // First request - establishes connection
     let t1 = Instant::now();
@@ -33,6 +34,7 @@ async fn pool_reuse() {
 }
 
 #[tokio::test]
+#[ignore] // Requires network access to live Hyperliquid testnet API
 async fn shared_client_reuse() {
     // Test that multiple clients actually share the same underlying connection
     let client1 = InfoClient::new(Some(BaseUrl::Testnet)).await.unwrap();

@@ -1,6 +1,7 @@
 mod connection;
 pub(crate) mod router;
 mod types;
+pub mod zero_copy;
 
 #[cfg(feature = "fast-ws")]
 use crate::ws::backend::{MsgRx, WsBackend};

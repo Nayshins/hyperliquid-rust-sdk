@@ -59,7 +59,7 @@ async fn test_subscription_creation() {
 
 // Integration test that actually connects to the WebSocket
 #[tokio::test(flavor = "multi_thread")]
-#[ignore] // Ignore by default since it requires network access
+#[ignore] // Requires network access to live Hyperliquid WebSocket API
 async fn test_real_websocket_connection() {
     let ws = make_ws_backend("wss://api.hyperliquid.xyz/ws", false)
         .await
