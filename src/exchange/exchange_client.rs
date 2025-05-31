@@ -36,7 +36,7 @@ use super::{BuilderInfo, ClientLimit, ClientOrder};
 
 #[derive(Debug)]
 pub struct ExchangeClient {
-    pub http_client: HttpClient,
+    pub http_client: HttpClient<'static>,
     pub wallet: LocalWallet,
     pub meta: Meta,
     pub vault_address: Option<H160>,
@@ -90,16 +90,49 @@ impl Actions {
 
 impl ExchangeClient {
     pub async fn new(
-        client: Option<Client>,
         wallet: LocalWallet,
         base_url: Option<BaseUrl>,
         meta: Option<Meta>,
         vault_address: Option<H160>,
     ) -> Result<ExchangeClient> {
-        let client = client.unwrap_or_default();
         let base_url = base_url.unwrap_or(BaseUrl::Mainnet);
 
-        let info = InfoClient::new(None, Some(base_url)).await?;
+        let info = InfoClient::new(Some(base_url)).await?;
+        let meta = if let Some(meta) = meta {
+            meta
+        } else {
+            info.meta().await?
+        };
+
+        let mut coin_to_asset = HashMap::new();
+        for (asset_ind, asset) in meta.universe.iter().enumerate() {
+            coin_to_asset.insert(asset.name.clone(), asset_ind as u32);
+        }
+
+        coin_to_asset = info
+            .spot_meta()
+            .await?
+            .add_pair_and_name_to_index_map(coin_to_asset);
+
+        Ok(ExchangeClient {
+            wallet,
+            meta,
+            vault_address,
+            http_client: HttpClient::new(base_url.get_url()),
+            coin_to_asset,
+        })
+    }
+
+    pub async fn with_client(
+        client: &'static Client,
+        wallet: LocalWallet,
+        base_url: Option<BaseUrl>,
+        meta: Option<Meta>,
+        vault_address: Option<H160>,
+    ) -> Result<ExchangeClient> {
+        let base_url = base_url.unwrap_or(BaseUrl::Mainnet);
+
+        let info = InfoClient::new(Some(base_url)).await?;
         let meta = if let Some(meta) = meta {
             meta
         } else {
@@ -292,7 +325,7 @@ impl ExchangeClient {
             "https://api.hyperliquid-testnet.xyz" => BaseUrl::Testnet,
             _ => return Err(Error::GenericRequest("Invalid base URL".to_string())),
         };
-        let info_client = InfoClient::new(None, Some(base_url)).await?;
+        let info_client = InfoClient::new(Some(base_url)).await?;
         let user_state = info_client.user_state(wallet.address()).await?;
 
         let position = user_state
@@ -340,7 +373,7 @@ impl ExchangeClient {
             "https://api.hyperliquid-testnet.xyz" => BaseUrl::Testnet,
             _ => return Err(Error::GenericRequest("Invalid base URL".to_string())),
         };
-        let info_client = InfoClient::new(None, Some(base_url)).await?;
+        let info_client = InfoClient::new(Some(base_url)).await?;
         let meta = info_client.meta().await?;
 
         let asset_meta = meta

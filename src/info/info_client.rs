@@ -91,33 +91,61 @@ pub enum InfoRequest {
 
 #[derive(Debug)]
 pub struct InfoClient {
-    pub http_client: HttpClient,
+    pub http_client: HttpClient<'static>,
     pub(crate) ws: Option<Arc<dyn WsBackend>>,
     reconnect: bool,
 }
 
 impl InfoClient {
-    pub async fn new(client: Option<Client>, base_url: Option<BaseUrl>) -> Result<InfoClient> {
-        Self::new_internal(client, base_url, false).await
+    pub async fn new(base_url: Option<BaseUrl>) -> Result<InfoClient> {
+        Self::new_internal(base_url, false).await
     }
 
     pub async fn with_reconnect(
-        client: Option<Client>,
         base_url: Option<BaseUrl>,
     ) -> Result<InfoClient> {
-        Self::new_internal(client, base_url, true).await
+        Self::new_internal(base_url, true).await
     }
 
     async fn new_internal(
-        client: Option<Client>,
         base_url: Option<BaseUrl>,
         reconnect: bool,
     ) -> Result<InfoClient> {
-        let client = client.unwrap_or_default();
         let base_url = base_url.unwrap_or(BaseUrl::Mainnet).get_url();
 
         Ok(InfoClient {
-            http_client: HttpClient { client, base_url },
+            http_client: HttpClient::new(base_url),
+            ws: None,
+            reconnect,
+        })
+    }
+
+    pub async fn with_client(
+        client: &'static Client,
+        base_url: Option<BaseUrl>,
+    ) -> Result<InfoClient> {
+        Self::with_client_internal(client, base_url, false).await
+    }
+
+    pub async fn with_client_reconnect(
+        client: &'static Client,
+        base_url: Option<BaseUrl>,
+    ) -> Result<InfoClient> {
+        Self::with_client_internal(client, base_url, true).await
+    }
+
+    async fn with_client_internal(
+        client: &'static Client,
+        base_url: Option<BaseUrl>,
+        reconnect: bool,
+    ) -> Result<InfoClient> {
+        let base_url = base_url.unwrap_or(BaseUrl::Mainnet).get_url();
+
+        Ok(InfoClient {
+            http_client: HttpClient {
+                client,
+                base_url,
+            },
             ws: None,
             reconnect,
         })

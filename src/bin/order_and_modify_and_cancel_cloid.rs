@@ -16,7 +16,7 @@ async fn main() {
         .parse()
         .unwrap();
 
-    let exchange_client = ExchangeClient::new(None, wallet, Some(BaseUrl::Testnet), None, None)
+    let exchange_client = ExchangeClient::new(wallet, Some(BaseUrl::Testnet), None, None)
         .await
         .unwrap();
 
