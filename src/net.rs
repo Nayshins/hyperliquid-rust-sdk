@@ -7,7 +7,6 @@ pub(crate) fn get_client() -> &'static reqwest::Client {
     HTTP.get_or_init(|| {
         reqwest::Client::builder()
             .user_agent(concat!("hyperliquid-rust-sdk/", env!("CARGO_PKG_VERSION")))
-            .http2_prior_knowledge() // HL API speaks h2
             .pool_idle_timeout(Duration::from_secs(90))
             .pool_max_idle_per_host(32)
             .tcp_keepalive(Duration::from_secs(30))

@@ -8,10 +8,10 @@ See `src/bin` for examples. You can run any example with `cargo run --bin [EXAMP
 
 ## Connection Pooling
 
-The SDK now uses a shared HTTP/2 connection pool for all REST API calls, significantly improving performance:
+The SDK now uses a shared HTTP connection pool for all REST API calls, significantly improving performance:
 
 - **Single TCP/TLS handshake** per process, reused for all requests
-- **HTTP/2 multiplexing** allows concurrent requests over the same connection
+- **Connection keep-alive** allows multiple requests over the same connection
 - **32 idle connections per host** with 90-second keep-alive
 - **Automatic connection reuse** across all SDK instances
 
