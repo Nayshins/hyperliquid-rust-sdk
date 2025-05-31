@@ -11,6 +11,10 @@ repository = "https://github.com/hyperliquid-dex/hyperliquid-rust-sdk"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = []
+fast-ws = ["simd-json", "dashmap", "hdrhistogram"]
+
 [dependencies]
 chrono = "0.4.26"
 env_logger = "0.10.0"
@@ -29,3 +33,13 @@ thiserror = "1.0.44"
 tokio = {version = "1.29.1", features = ["full"]}
 tokio-tungstenite = {version = "0.20.0", features = ["native-tls"]}
 uuid = {version = "1.6.1", features = ["v4"]}
+async-trait = "0.1"
+dashmap = { version = "5", optional = true }
+simd-json = { version = "0.6", optional = true, features = ["128bit"] }
+hdrhistogram = { version = "7", optional = true }
+
+[dev-dependencies]
+quickcheck = "1.0"
+quickcheck_macros = "1.0"
+proptest = "1.0"
+tokio-test = "0.4"
