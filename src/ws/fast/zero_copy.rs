@@ -57,8 +57,8 @@ fn parse_l2_book_zero_copy(borrowed: &BorrowedValue<'_>) -> Option<Message> {
 
             for level_item in group_array {
                 if let Some(level_obj) = level_item.as_object() {
-                    let px = level_obj.get("px")?.as_str()?.to_string();
-                    let sz = level_obj.get("sz")?.as_str()?.to_string();
+                    let px = level_obj.get("px")?.as_f64()?;
+                    let sz = level_obj.get("sz")?.as_f64()?;
                     let n = level_obj.get("n")?.as_u64()?;
 
                     level_group_vec.push(BookLevel { px, sz, n });

@@ -6,8 +6,8 @@ use std::collections::HashMap;
 pub struct Trade {
     pub coin: String,
     pub side: String,
-    pub px: String,
-    pub sz: String,
+    pub px: f64,
+    pub sz: f64,
     pub time: u64,
     pub hash: String,
     pub tid: u64,
@@ -15,8 +15,8 @@ pub struct Trade {
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct BookLevel {
-    pub px: String,
-    pub sz: String,
+    pub px: f64,
+    pub sz: f64,
     pub n: u64,
 }
 
@@ -24,66 +24,7 @@ pub struct BookLevel {
 pub struct L2BookData {
     pub coin: String,
     pub time: u64,
-    #[serde(deserialize_with = "deserialize_book_levels")]
     pub levels: Vec<Vec<BookLevel>>,
-}
-
-fn deserialize_book_levels<'de, D>(deserializer: D) -> Result<Vec<Vec<BookLevel>>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    use serde::de::{self, Visitor};
-    use std::fmt;
-
-    struct BookLevelsVisitor;
-
-    impl<'de> Visitor<'de> for BookLevelsVisitor {
-        type Value = Vec<Vec<BookLevel>>;
-
-        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            formatter.write_str("an array of arrays of arrays with [price, size, count]")
-        }
-
-        fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-        where
-            A: de::SeqAccess<'de>,
-        {
-            let mut sides = Vec::new();
-
-            while let Some(side) = seq.next_element::<Vec<Vec<serde_json::Value>>>()? {
-                let mut levels = Vec::new();
-
-                for arr in side {
-                    if arr.len() != 3 {
-                        return Err(de::Error::custom(format!(
-                            "Expected array of length 3, got {}",
-                            arr.len()
-                        )));
-                    }
-
-                    let px = arr[0]
-                        .as_str()
-                        .ok_or_else(|| de::Error::custom("Expected string for price"))?
-                        .to_string();
-                    let sz = arr[1]
-                        .as_str()
-                        .ok_or_else(|| de::Error::custom("Expected string for size"))?
-                        .to_string();
-                    let n = arr[2]
-                        .as_u64()
-                        .ok_or_else(|| de::Error::custom("Expected u64 for count"))?;
-
-                    levels.push(BookLevel { px, sz, n });
-                }
-
-                sides.push(levels);
-            }
-
-            Ok(sides)
-        }
-    }
-
-    deserializer.deserialize_seq(BookLevelsVisitor)
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -387,65 +328,12 @@ pub struct SpotAssetCtx {
 pub struct BboData {
     pub coin: String,
     pub time: u64,
-    #[serde(deserialize_with = "deserialize_bbo_levels")]
     pub bbo: Vec<BboLevel>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct BboLevel {
-    pub px: String,
-    pub sz: String,
+    pub px: f64,
+    pub sz: f64,
     pub n: u64,
-}
-
-fn deserialize_bbo_levels<'de, D>(deserializer: D) -> Result<Vec<BboLevel>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    use serde::de::{self, Visitor};
-    use std::fmt;
-
-    struct BboLevelsVisitor;
-
-    impl<'de> Visitor<'de> for BboLevelsVisitor {
-        type Value = Vec<BboLevel>;
-
-        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            formatter.write_str("an array of arrays with [price, size, count]")
-        }
-
-        fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-        where
-            A: de::SeqAccess<'de>,
-        {
-            let mut levels = Vec::new();
-
-            while let Some(arr) = seq.next_element::<Vec<serde_json::Value>>()? {
-                if arr.len() != 3 {
-                    return Err(de::Error::custom(format!(
-                        "Expected array of length 3, got {}",
-                        arr.len()
-                    )));
-                }
-
-                let px = arr[0]
-                    .as_str()
-                    .ok_or_else(|| de::Error::custom("Expected string for price"))?
-                    .to_string();
-                let sz = arr[1]
-                    .as_str()
-                    .ok_or_else(|| de::Error::custom("Expected string for size"))?
-                    .to_string();
-                let n = arr[2]
-                    .as_u64()
-                    .ok_or_else(|| de::Error::custom("Expected u64 for count"))?;
-
-                levels.push(BboLevel { px, sz, n });
-            }
-
-            Ok(levels)
-        }
-    }
-
-    deserializer.deserialize_seq(BboLevelsVisitor)
 }
