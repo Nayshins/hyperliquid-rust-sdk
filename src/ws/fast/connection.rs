@@ -82,7 +82,19 @@ impl FastWs {
                                 let ident = ident_from_channel(&chan);
                                 if let Some(tx) = read_bus.get(&ident) {
                                     let _ = tx.send(Arc::new(msg));
+                                } else {
+                                    log::debug!(
+                                        "No subscriber for channel: {} (ident: {:?})",
+                                        chan,
+                                        ident
+                                    );
                                 }
+                            } else {
+                                log::warn!("Failed to parse message for channel: {}", chan);
+                                // Log first 200 chars of the message for debugging
+                                let preview =
+                                    String::from_utf8_lossy(&bytes[..bytes.len().min(200)]);
+                                log::debug!("Message preview: {}", preview);
                             }
                         }
                     }
@@ -108,6 +120,19 @@ impl FastWs {
                         // TODO: Implement reconnection logic here
                     }
                     None => break,
+                }
+            }
+        });
+
+        // Ping task
+        let ping_writer = tx.clone();
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(50));
+            loop {
+                interval.tick().await;
+                let ping_msg = serde_json::json!({"method": "ping"}).to_string();
+                if ping_writer.send(WsMsg::Text(ping_msg)).is_err() {
+                    break;
                 }
             }
         });

@@ -6,8 +6,8 @@ use std::collections::HashMap;
 pub struct Trade {
     pub coin: String,
     pub side: String,
-    pub px: f64,
-    pub sz: f64,
+    pub px: String,
+    pub sz: String,
     pub time: u64,
     pub hash: String,
     pub tid: u64,
@@ -15,8 +15,8 @@ pub struct Trade {
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct BookLevel {
-    pub px: f64,
-    pub sz: f64,
+    pub px: String,
+    pub sz: String,
     pub n: u64,
 }
 
@@ -333,7 +333,7 @@ pub struct BboData {
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct BboLevel {
-    pub px: f64,
-    pub sz: f64,
+    pub px: String,
+    pub sz: String,
     pub n: u64,
 }
