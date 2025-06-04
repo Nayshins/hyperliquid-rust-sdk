@@ -1,4 +1,3 @@
-#[cfg(feature = "fast-ws")]
 #[cfg(test)]
 mod tests {
     use hyperliquid_rust_sdk::ws::Message;
@@ -54,20 +53,5 @@ mod tests {
         // Should return None for non-high-throughput channels, allowing fallback to serde
         let result = hyperliquid_rust_sdk::ws::fast::zero_copy::parse_zero_copy(bytes);
         assert!(result.is_none());
-    }
-}
-
-#[cfg(not(feature = "fast-ws"))]
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_zero_copy_disabled_without_fast_ws() {
-        // When fast-ws feature is not enabled, the fast module doesn't exist
-        // This test just verifies that the test compiles when the feature is disabled
-        // The actual zero-copy functionality is only available with fast-ws feature
-        assert!(
-            true,
-            "Zero-copy parsing is not available without fast-ws feature"
-        );
     }
 }

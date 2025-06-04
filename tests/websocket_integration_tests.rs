@@ -2,11 +2,9 @@ use hyperliquid_rust_sdk::{make_ws_backend, Subscription};
 use std::time::Duration;
 
 #[tokio::test(flavor = "multi_thread")]
-#[cfg(feature = "fast-ws")]
 async fn test_fast_ws_backend_creation() {
     // Test that we can create a fast WebSocket backend without connecting
     // This validates the backend trait implementation and type safety
-    use hyperliquid_rust_sdk::WsBackend;
 
     // Test backend creation (this will fail to connect but shouldn't panic)
     let result = make_ws_backend("ws://localhost:9999/invalid", false).await;
@@ -20,24 +18,6 @@ async fn test_fast_ws_backend_creation() {
         Err(e) => {
             // Expected: connection should fail gracefully
             println!("Backend creation failed as expected: {}", e);
-            // The important thing is that it didn't panic
-        }
-    }
-}
-
-#[tokio::test(flavor = "multi_thread")]
-#[cfg(not(feature = "fast-ws"))]
-async fn test_legacy_ws_backend_creation() {
-    // Test that legacy backend creation works when fast-ws is disabled
-    let result = make_ws_backend("ws://localhost:9999/invalid", false).await;
-
-    // We expect this to fail since there's no server, but it should be a graceful error
-    match result {
-        Ok(_) => {
-            println!("Legacy backend creation succeeded unexpectedly");
-        }
-        Err(e) => {
-            println!("Legacy backend creation failed as expected: {}", e);
             // The important thing is that it didn't panic
         }
     }
@@ -74,12 +54,11 @@ async fn test_real_websocket_connection() {
     for i in 0..3 {
         let msg = tokio::time::timeout(Duration::from_secs(30), rx.recv())
             .await
-            .expect(&format!(
-                "Should receive message {} within 30 seconds",
-                i + 1
-            ));
+            .unwrap_or_else(|_| panic!("Should receive message {} within 30 seconds", i + 1));
 
-        assert!(msg.is_ok(), "Message {} should be valid", i + 1);
-        println!("Received message {}: {:?}", i + 1, msg.unwrap());
+        match msg {
+            Ok(msg) => println!("Received message {}: {:?}", i + 1, msg),
+            Err(e) => panic!("Message {} error: {:?}", i + 1, e),
+        }
     }
 }

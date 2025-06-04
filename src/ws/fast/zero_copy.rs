@@ -1,11 +1,7 @@
-#[cfg(feature = "fast-ws")]
 use crate::ws::{AllMids, AllMidsData, BookLevel, L2Book, L2BookData, Message};
-#[cfg(feature = "fast-ws")]
 use simd_json::{BorrowedValue, ValueAccess};
-#[cfg(feature = "fast-ws")]
 use std::collections::HashMap;
 
-#[cfg(feature = "fast-ws")]
 pub fn parse_zero_copy(bytes: &[u8]) -> Option<Message> {
     let mut buf = bytes.to_vec();
     let borrowed: BorrowedValue<'_> = simd_json::to_borrowed_value(&mut buf).ok()?;
@@ -19,7 +15,6 @@ pub fn parse_zero_copy(bytes: &[u8]) -> Option<Message> {
     }
 }
 
-#[cfg(feature = "fast-ws")]
 fn parse_all_mids_zero_copy(borrowed: &BorrowedValue<'_>) -> Option<Message> {
     let data_obj = borrowed.get("data")?;
     let mids_obj = data_obj.get("mids")?;
@@ -40,7 +35,6 @@ fn parse_all_mids_zero_copy(borrowed: &BorrowedValue<'_>) -> Option<Message> {
     }))
 }
 
-#[cfg(feature = "fast-ws")]
 fn parse_l2_book_zero_copy(borrowed: &BorrowedValue<'_>) -> Option<Message> {
     let data_obj = borrowed.get("data")?;
 
@@ -71,9 +65,4 @@ fn parse_l2_book_zero_copy(borrowed: &BorrowedValue<'_>) -> Option<Message> {
     Some(Message::L2Book(L2Book {
         data: L2BookData { coin, time, levels },
     }))
-}
-
-#[cfg(not(feature = "fast-ws"))]
-pub(super) fn parse_zero_copy(_bytes: &[u8]) -> Option<Message> {
-    None
 }

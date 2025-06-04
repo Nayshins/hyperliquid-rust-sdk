@@ -1,4 +1,4 @@
-use hyperliquid_rust_sdk::{BboData, BboLevel, BookLevel, L2BookData};
+use hyperliquid_rust_sdk::{BboData, L2BookData};
 
 #[test]
 fn test_bbo_message_parsing() {

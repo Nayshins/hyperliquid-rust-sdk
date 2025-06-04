@@ -1,4 +1,3 @@
-#[cfg(feature = "fast-ws")]
 pub(super) fn route(buf: &[u8]) -> Option<String> {
     use simd_json::{to_borrowed_value, BorrowedValue, ValueAccess};
 
@@ -37,9 +36,4 @@ pub(super) fn route(buf: &[u8]) -> Option<String> {
         }
         other => Some(other.to_string()),
     }
-}
-
-#[cfg(not(feature = "fast-ws"))]
-pub(super) fn route(_buf: &[u8]) -> Option<String> {
-    None
 }

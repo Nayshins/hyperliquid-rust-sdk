@@ -1,5 +1,4 @@
-use hyperliquid_rust_sdk::prelude::*;
-use hyperliquid_rust_sdk::{InfoClient, Subscription, Message};
+use hyperliquid_rust_sdk::{BaseUrl, InfoClient, Subscription, Message};
 use tokio::sync::mpsc;
 use std::time::Duration;
 
@@ -7,12 +6,12 @@ use std::time::Duration;
 #[ignore] // This is a live test - remove #[ignore] to run against real WebSocket
 async fn test_multiple_subscriptions_routing() {
     // Create separate channels for each subscription type
-    let (l2_tx, mut l2_rx) = mpsc::channel::<Message>(100);
-    let (bbo_tx, mut bbo_rx) = mpsc::channel::<Message>(100);
-    let (trades_tx, mut trades_rx) = mpsc::channel::<Message>(100);
+    let (l2_tx, mut l2_rx) = mpsc::unbounded_channel::<Message>();
+    let (bbo_tx, mut bbo_rx) = mpsc::unbounded_channel::<Message>();
+    let (trades_tx, mut trades_rx) = mpsc::unbounded_channel::<Message>();
 
     // Create InfoClient
-    let info_client = InfoClient::new(Some(BaseUrl::Mainnet))
+    let mut info_client = InfoClient::new(Some(BaseUrl::Mainnet))
         .await
         .expect("Failed to create InfoClient");
 

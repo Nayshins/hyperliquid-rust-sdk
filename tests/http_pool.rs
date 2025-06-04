@@ -41,9 +41,11 @@ async fn shared_client_reuse() {
     let client2 = InfoClient::new(Some(BaseUrl::Testnet)).await.unwrap();
 
     // Both should work and use the same underlying HTTP client pool
-    let _meta1 = client1.meta().await.unwrap();
-    let _meta2 = client2.meta().await.unwrap();
+    let meta1 = client1.meta().await.unwrap();
+    let meta2 = client2.meta().await.unwrap();
 
     // If we get here without errors, the shared pool is working
-    assert!(true);
+    // Verify we got valid metadata
+    assert!(!meta1.universe.is_empty());
+    assert!(!meta2.universe.is_empty());
 }

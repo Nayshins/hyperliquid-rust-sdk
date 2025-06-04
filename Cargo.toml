@@ -13,7 +13,8 @@ repository = "https://github.com/hyperliquid-dex/hyperliquid-rust-sdk"
 
 [features]
 default = []
-fast-ws = ["simd-json", "dashmap", "hdrhistogram"]
+# Deprecated: fast-ws is now always enabled
+fast-ws = []
 
 [dependencies]
 chrono = "0.4.26"
@@ -33,9 +34,9 @@ tokio = {version = "1.29.1", features = ["full"]}
 tokio-tungstenite = {version = "0.20.0", features = ["native-tls"]}
 uuid = {version = "1.6.1", features = ["v4"]}
 async-trait = "0.1"
-dashmap = { version = "5", optional = true }
-simd-json = { version = "0.6", optional = true, features = ["128bit"] }
-hdrhistogram = { version = "7", optional = true }
+dashmap = { version = "5" }
+simd-json = { version = "0.6", features = ["128bit"] }
+hdrhistogram = { version = "7" }
 
 [dev-dependencies]
 quickcheck = "1.0"
